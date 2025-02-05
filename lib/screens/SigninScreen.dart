@@ -1,7 +1,11 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:lh_cmru/screens/ForgetPassword.dart';
+import 'package:lh_cmru/services/share_pref_service.dart';
 import 'package:lh_cmru/widgets/CustomScaffold.dart';
 import 'package:lh_cmru/screens/HomeScreen.dart';
+
+import '../services/api_service.dart';
 
 class SigninScreen extends StatefulWidget {
   const SigninScreen({super.key});
@@ -12,7 +16,99 @@ class SigninScreen extends StatefulWidget {
 
 class _SigninScreenState extends State<SigninScreen> {
   final _formSignInKey = GlobalKey<FormState>();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   bool rememberPassword = false;
+
+  final SharePrefService _sharePrefService = SharePrefService();
+  final ApiService _apiService = ApiService();
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  // check if user is already logged in
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _sharePrefService.getIsLoggedIn().then((value) {
+      if (value) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      }
+    });
+  }
+
+  Future<void> _login() async {
+    if (_formSignInKey.currentState!.validate()) {
+      final email = _emailController.text;
+      final password = _passwordController.text;
+
+      try {
+        final response = await _apiService.post('/users/login', {
+          'Email': email,
+          'Password': password,
+        });
+
+        if (response.statusCode == 200) {
+          final data = response.data;
+          await _sharePrefService.saveProfile(
+              data['user']['UserName'], data['user']['Email']);
+          await _sharePrefService.saveUserSession(
+              data['user']['Id'].toString(), data['token']);
+          await _sharePrefService.saveIsLoggedIn(true);
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Center(
+                child: Text(
+                  'Email or Password is incorrect.',
+                  style: TextStyle(color: Color(0xFFFFCC04)),
+                ),
+              ),
+            ),
+          );
+        }
+      } on DioException catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Center(
+              child: Text(
+                e.response?.data['message'] ?? 'Email or Password is incorrect.',
+                style: const TextStyle(color: Color(0xFFFFCC04)),
+              ),
+            ),
+          ),
+        );
+      }
+    } else if (!rememberPassword) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Center(
+            child: Text(
+              'Please agree to the processing of personal data.',
+              style: TextStyle(color: Color(0xFFFFCC04)),
+            ),
+          ),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,6 +168,7 @@ class _SigninScreenState extends State<SigninScreen> {
                           ),
                           const SizedBox(height: 15),
                           TextFormField(
+                            controller: _emailController,
                             validator: (value) {
                               if (value == null || value.isEmpty) {
                                 return 'Please enter Email';
@@ -81,7 +178,8 @@ class _SigninScreenState extends State<SigninScreen> {
                             decoration: InputDecoration(
                               labelText: 'Email',
                               hintText: 'Enter Email',
-                              labelStyle: const TextStyle(color: Color(0xFF262626)),
+                              labelStyle:
+                                  const TextStyle(color: Color(0xFF262626)),
                               hintStyle: const TextStyle(
                                 color: Colors.grey,
                               ),
@@ -104,6 +202,7 @@ class _SigninScreenState extends State<SigninScreen> {
                           ),
                           const SizedBox(height: 10),
                           TextFormField(
+                            controller: _passwordController,
                             obscureText: true,
                             obscuringCharacter: '*',
                             validator: (value) {
@@ -114,7 +213,8 @@ class _SigninScreenState extends State<SigninScreen> {
                             },
                             decoration: InputDecoration(
                               labelText: 'Password',
-                              labelStyle: const TextStyle(color: Color(0xFF262626)),
+                              labelStyle:
+                                  const TextStyle(color: Color(0xFF262626)),
                               hintText: 'Enter Password',
                               hintStyle: const TextStyle(
                                 color: Colors.black26,
@@ -183,31 +283,11 @@ class _SigninScreenState extends State<SigninScreen> {
                             width: double.infinity,
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFFFCC04),
-                                foregroundColor: const Color(0xFF262626),
-                                padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 20)
-                              ),
-                              onPressed: () {
-                                if (_formSignInKey.currentState!.validate()) {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) => const HomeScreen()),
-                                  );
-                                } else if (!rememberPassword) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Center(
-                                        child: Text(
-                                            'Please agree to the processing of personal data.',
-                                            style: TextStyle(
-                                              color: Color(0xFFFFCC04)
-                                            )),
-                                      ),
-                                    ),
-                                  );
-                                }
-                              },
+                                  backgroundColor: const Color(0xFFFFCC04),
+                                  foregroundColor: const Color(0xFF262626),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 50, vertical: 20)),
+                              onPressed: _login,
                               child: const Text(
                                 'Sign in',
                                 style: TextStyle(

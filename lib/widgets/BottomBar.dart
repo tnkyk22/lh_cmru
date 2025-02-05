@@ -33,31 +33,14 @@ class BottomBar extends StatelessWidget {
                 icon:
                     const Icon(Icons.menu_book, color: Colors.amber, size: 35),
                 onPressed: () {
-                  Navigator.push(
+                  Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(
-                        builder: (context) => const HomeScreen()),
+                    MaterialPageRoute(builder: (context) => const HomeScreen()),
                   );
                 },
               ),
               Text(
                 'HOME',
-                style: GoogleFonts.pragatiNarrow(
-                    color: Colors.amber, fontSize: 16),
-              ),
-            ],
-          ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.note_add, color: Colors.amber, size: 35),
-                onPressed: () {
-                  // Handle search icon tap
-                },
-              ),
-              Text(
-                'UPLOAD',
                 style: GoogleFonts.pragatiNarrow(
                     color: Colors.amber, fontSize: 16),
               ),
@@ -86,7 +69,7 @@ class BottomBar extends StatelessWidget {
               IconButton(
                 icon: const Icon(Icons.face, color: Colors.amber, size: 35),
                 onPressed: () {
-                  Navigator.push(
+                  Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
                         builder: (context) => const ProfileScreen()),

@@ -1,11 +1,74 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:lh_cmru/screens/SigninScreen.dart';
+import 'package:lh_cmru/screens/WelcomeScreen.dart';
+import 'package:lh_cmru/services/api_service.dart';
+import 'package:lh_cmru/services/share_pref_service.dart';
 import 'package:lh_cmru/widgets/BottomBar.dart';
 import 'package:lh_cmru/widgets/ProfileMenu.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  ApiService apiService = ApiService();
+  SharePrefService sharePrefService = SharePrefService();
+  Map<String, dynamic> profile = {};
+
+  final TextEditingController _newPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
+  Future<void> getProfile() async {
+    try {
+      final res = await apiService.get('/users/me');
+      setState(() {
+        profile = res.data;
+      });
+    } catch (e) {
+      print('error: $e');
+    }
+  }
+
+  Future<void> _changePassword() async {
+    if (_newPasswordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('New passwords do not match')),
+      );
+      return;
+    }
+
+    try {
+      if (_newPasswordController.text.isEmpty ||
+          _confirmPasswordController.text.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please fill all fields')),
+        );
+        return;
+      }
+      await apiService.changePassword(
+        _newPasswordController.text,
+      );
+      _newPasswordController.clear();
+      _confirmPasswordController.clear();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password changed successfully')),
+      );
+      Navigator.pop(context); // Close the dialog
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to change password: $e')),
+      );
+    }
+  }
+
+  @override
+  void initState() {
+    getProfile();
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,11 +106,8 @@ class ProfileScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 10),
-              Text('#U0001',
-                  style: GoogleFonts.urbanist(
-                      fontSize: 16, color: Colors.grey[500])),
               Text(
-                'Tanakorn Yodkham',
+                profile['UserName'] ?? 'Name',
                 style: GoogleFonts.urbanist(
                   fontWeight: FontWeight.bold,
                   fontSize: 20,
@@ -77,14 +137,14 @@ class ProfileScreen extends StatelessWidget {
               const SizedBox(height: 10),
               //Menu
               ProfileMenu(
-                title: 'Tanakorn Yodkham',
+                title: profile['UserName'] ?? 'Name',
                 icon: Icons.face_outlined,
                 onPressed: () {
                   print('Name');
                 },
               ),
               ProfileMenu(
-                title: 'xxxxxxxxx@g.cmru.ac.th',
+                title: profile['Email'] ?? 'Email',
                 icon: Icons.email_outlined,
                 onPressed: () {
                   print('Email');
@@ -94,57 +154,47 @@ class ProfileScreen extends StatelessWidget {
                 title: 'Password',
                 icon: Icons.password_rounded,
                 onPressed: () {
-                  print('Password');
-                },
-              ),
-              ProfileMenu(
-                title: 'Faculty',
-                icon: Icons.emoji_flags_rounded,
-                onPressed: () {
-                  print('Faculty');
-                },
-              ),
-              ProfileMenu(
-                title: 'Department',
-                icon: Icons.hub_outlined,
-                onPressed: () {
-                  print('Department');
-                },
-              ),
-              const SizedBox(height: 10),
-              const Divider(),
-              const SizedBox(height: 12),
-              ProfileMenu(
-                title: 'SIGN OUT',
-                icon: Icons.exit_to_app_rounded,
-                textColor: Colors.amber,
-                endIcon: false,
-                onPressed: () {
-                  // แสดง Popup Dialog
+                  // change password dialog
                   showDialog(
                     context: context,
                     builder: (BuildContext context) {
                       return AlertDialog(
                         backgroundColor: Colors.white,
                         title: Text(
-                          "Confirm Sign out",
+                          "Change Password",
                           style: GoogleFonts.urbanist(
                             color: Colors.amber,
                             fontSize: 20,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        content:
-                            Text("Are you sure you want to sign out?",
-                            style: GoogleFonts.pragatiNarrow(
-                              fontSize: 16,
-                              color: const Color(0xFF262626),
-                            ),),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            TextFormField(
+                              controller: _newPasswordController,
+                              decoration: InputDecoration(
+                                labelText: 'New Password',
+                                labelStyle: GoogleFonts.pragatiNarrow(
+                                  color: const Color(0xFF262626),
+                                ),
+                              ),
+                            ),
+                            TextFormField(
+                              controller: _confirmPasswordController,
+                              decoration: InputDecoration(
+                                labelText: 'Confirm Password',
+                                labelStyle: GoogleFonts.pragatiNarrow(
+                                  color: const Color(0xFF262626),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                         actions: [
                           TextButton(
                             onPressed: () {
-                              Navigator.pop(
-                                  context); // ปิด Popup เมื่อกด Cancel
+                              Navigator.pop(context);
                             },
                             child: Text(
                               "CANCEL",
@@ -155,24 +205,18 @@ class ProfileScreen extends StatelessWidget {
                           ),
                           ElevatedButton(
                             onPressed: () {
-                              Navigator.pop(context); // ปิด Popup
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const SigninScreen(),
-                                ),
-                              ); // ไปหน้าลงชื่อเข้าใช้
+                              _changePassword();
                             },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  const Color(0xfffcdf59), // สีปุ่ม Sign Out
+                            ),
                             child: Text(
-                              "SIGN OUT",
+                              "CHANGE",
                               style: GoogleFonts.urbanist(
                                 color: const Color(0xFF262626),
                                 fontWeight: FontWeight.bold,
                               ),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor:
-                                  const Color(0xfffcdf59), // สีปุ่ม Sign Out
                             ),
                           ),
                         ],
@@ -180,6 +224,48 @@ class ProfileScreen extends StatelessWidget {
                     },
                   );
                 },
+              ),
+              ProfileMenu(
+                title: profile['Faculty']?['Name'] ?? 'Faculty',
+                icon: Icons.emoji_flags_rounded,
+                onPressed: () {
+                  print('Faculty');
+                },
+              ),
+              ProfileMenu(
+                title: profile['Department']?['Name'] ?? 'Department',
+                icon: Icons.hub_outlined,
+                onPressed: () {
+                  print('Department');
+                },
+              ),
+              const SizedBox(height: 10),
+              const Divider(),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: 160,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    await sharePrefService.logout();
+                    Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const WelcomeScreen(),
+                        ),
+                        (route) => false);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xfffcdf59),
+                  ),
+                  child: Text(
+                    'Sign Out',
+                    style: GoogleFonts.pragatiNarrow(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 18,
+                      color: const Color(0xFF262626),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),

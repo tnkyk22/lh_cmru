@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:lh_cmru/services/api_service.dart';
 import 'package:lh_cmru/widgets/BottomBar.dart';
 import 'package:lh_cmru/widgets/itemsWidget.dart';
 
@@ -14,10 +15,66 @@ class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
+  ApiService apiService = ApiService();
+
+  final List<Map<String, List<Map<String, dynamic>>>> items = [];
+  List<Map<String, List<Map<String, dynamic>>>> _filteredItems = [];
+
+  Future<void> getItems() async {
+    // ดึงข้อมูลจาก API
+    try {
+      final res = await apiService.get('/sheet');
+      final data = res.data as List<dynamic>;
+      final Map<String, List<Map<String, dynamic>>> groupedItems = {};
+
+      for (var item in data) {
+        final noteType = item['NoteType'];
+        if (groupedItems.containsKey(noteType)) {
+          groupedItems[noteType]!.add(item);
+        } else {
+          groupedItems[noteType] = [item];
+        }
+      }
+
+      setState(() {
+        items.add(groupedItems);
+        _filteredItems = List.from(items);
+      });
+    } catch (e) {
+      print('error: $e');
+    }
+  }
+
+  void _filterItems(String query) {
+    if (query.isEmpty) {
+      setState(() {
+        _filteredItems = List.from(items);
+      });
+      return;
+    }
+
+    final filtered = items.map((group) {
+      final filteredGroup = group.map((key, value) {
+        final filteredItems = value
+            .where((item) => item['Name']
+                .toString()
+                .toLowerCase()
+                .contains(query.toLowerCase()))
+            .toList();
+        return MapEntry(key, filteredItems);
+      });
+      return filteredGroup;
+    }).toList();
+
+    setState(() {
+      _filteredItems = filtered;
+    });
+  }
 
   @override
   void initState() {
-    _tabController = TabController(length: 4, vsync: this, initialIndex: 0);
+    _tabController = TabController(length: 3, vsync: this, initialIndex: 0);
+    getItems();
     super.initState();
   }
 
@@ -61,7 +118,8 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ),
                 Container(
-                  margin: const EdgeInsets.only(top: 5, left: 18, right: 18, bottom: 3),
+                  margin: const EdgeInsets.only(
+                      top: 5, left: 18, right: 18, bottom: 3),
                   height: 50,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
@@ -86,33 +144,35 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                       suffixIcon: _searchController.text.isNotEmpty
                           ? Padding(
-                            padding: const EdgeInsets.only(right: 10),
-                            child: IconButton(
+                              padding: const EdgeInsets.only(right: 10),
+                              child: IconButton(
                                 icon: const Icon(Icons.cancel_rounded),
                                 color: Colors.grey,
                                 onPressed: () {
                                   _searchController.clear();
-                                  setState(() {});
+                                  _filterItems('');
                                 },
                               ),
-                          )
+                            )
                           : null,
                       contentPadding: const EdgeInsets.symmetric(vertical: 15),
                     ),
                     onChanged: (value) {
-                      setState(() {}); // อัปเดตไอคอนเมื่อพิมพ์ข้อความ
+                      _filterItems(value);
                     },
                   ),
                 ),
                 TabBar(
                   controller: _tabController,
                   labelColor: Colors.amber,
-                  unselectedLabelColor: const Color(0xFF262626).withOpacity(0.5),
+                  unselectedLabelColor:
+                      const Color(0xFF262626).withOpacity(0.5),
                   isScrollable: false,
                   indicator: const UnderlineTabIndicator(
                     borderSide: BorderSide(width: 4, color: Colors.amber),
                   ),
-                  labelStyle: GoogleFonts.urbanist(fontSize: 18, fontWeight: FontWeight.w500),
+                  labelStyle: GoogleFonts.urbanist(
+                      fontSize: 18, fontWeight: FontWeight.w500),
                   labelPadding: const EdgeInsets.symmetric(horizontal: 9),
                   tabs: const [
                     Tab(text: 'NOTE'),
@@ -124,10 +184,21 @@ class _HomeScreenState extends State<HomeScreen>
                   child: TabBarView(
                     controller: _tabController,
                     children: [
-                      ItemsWidget(),
-                      ItemsWidget(),
-                      ItemsWidget(),
-                      ItemsWidget(),
+                      ItemsWidget(
+                        datas: _filteredItems.isNotEmpty
+                            ? _filteredItems[0]['Note'] ?? []
+                            : [],
+                      ),
+                      ItemsWidget(
+                        datas: _filteredItems.isNotEmpty
+                            ? _filteredItems[0]['Sheet'] ?? []
+                            : [],
+                      ),
+                      ItemsWidget(
+                        datas: _filteredItems.isNotEmpty
+                            ? _filteredItems[0]['Handout'] ?? []
+                            : [],
+                      ),
                     ],
                   ),
                 ),

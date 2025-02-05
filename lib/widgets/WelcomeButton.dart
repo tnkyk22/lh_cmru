@@ -10,7 +10,7 @@ class WelcomeButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(context, MaterialPageRoute(builder: (e)=> onTap!));
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (e)=> onTap!));
       },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 30),
