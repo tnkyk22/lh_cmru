@@ -1,3 +1,6 @@
+const apiURL = 'http://localhost:3033';
+
 String getApiMedia(String img) {
-  return 'http://localhost:3033/$img';
+  return '$apiURL/$img';
 }
+

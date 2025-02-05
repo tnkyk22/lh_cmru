@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lh_cmru/screens/HomeScreen.dart';
 import 'package:lh_cmru/screens/ProfileScreen.dart';
+import 'package:lh_cmru/screens/ReportScreen.dart';
 
 class BottomBar extends StatelessWidget {
   const BottomBar({super.key});
@@ -53,7 +54,11 @@ class BottomBar extends StatelessWidget {
                 icon: const Icon(Icons.assistant_photo_rounded,
                     color: Colors.amber, size: 35),
                 onPressed: () {
-                  // Handle favorite icon tap
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const ReportScreen()),
+                  );
                 },
               ),
               Text(

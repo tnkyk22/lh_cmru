@@ -1,11 +1,12 @@
 import 'package:dio/dio.dart';
 import 'package:lh_cmru/services/share_pref_service.dart';
+import 'package:lh_cmru/services/utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   final Dio _dio;
 
-  ApiService({String baseUrl = 'http://localhost:3033/api', int timeout = 5000})
+  ApiService({String baseUrl = '$apiURL/api', int timeout = 5000})
       : _dio = Dio(BaseOptions(
           baseUrl: baseUrl,
           connectTimeout: Duration(milliseconds: timeout),
